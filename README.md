@@ -57,7 +57,7 @@ A comprehensive web-based system that empowers Hong Kong university lecturers to
 3. **Set up environment variables**
    Create a `.env.local` file with:
    ```env
-   MONGODB_URI=mongodb+srv://25065865g:root_231228@comp5241.mjsdsjc.mongodb.net/?retryWrites=true&w=majority&appName=COMP5241
+   MONGODB_URI=your-mongo-uri
    NEXTAUTH_SECRET=your-secret-key-here
    NEXTAUTH_URL=http://localhost:3000
    OPENAI_API_KEY=your-openai-api-key-here
