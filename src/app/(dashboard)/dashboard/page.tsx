@@ -31,7 +31,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (!session) {
+  if (!session || !session.user) {
     return null
   }
 
