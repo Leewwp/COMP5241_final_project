@@ -36,7 +36,7 @@ export default function CreateCoursePage() {
       if (response.ok) {
         const course = await response.json()
         toast.success('Course created successfully!')
-        router.push(`/courses/${course._id}`)
+        router.push('/dashboard')
       } else {
         const error = await response.json()
         toast.error(error.message || 'Failed to create course')
