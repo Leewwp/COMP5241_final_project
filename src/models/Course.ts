@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose'
 export interface ICourse extends Document {
   title: string
   description: string
+  code: string
   instructorId: mongoose.Types.ObjectId
   studentIds: mongoose.Types.ObjectId[]
   createdAt: Date
@@ -19,6 +20,12 @@ const CourseSchema = new Schema<ICourse>({
     type: String,
     required: true,
     trim: true
+  },
+  code: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true
   },
   instructorId: {
     type: Schema.Types.ObjectId,
