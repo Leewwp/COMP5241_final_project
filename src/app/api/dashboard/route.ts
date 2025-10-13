@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const uniqueStudents = new Set()
     courses.forEach(course => {
       if (course.studentIds) {
-        course.studentIds.forEach(studentId => uniqueStudents.add(studentId.toString()))
+        course.studentIds.forEach((studentId: any) => uniqueStudents.add(studentId.toString()))
       }
     })
     const totalStudents = uniqueStudents.size

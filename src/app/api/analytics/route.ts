@@ -7,6 +7,12 @@ import ActivityResponse from '@/models/ActivityResponse'
 import Course from '@/models/Course'
 import User from '@/models/User'
 
+interface StudentPerformance {
+  name: string
+  totalScore: number
+  activityCount: number
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -130,9 +136,9 @@ export async function GET(request: NextRequest) {
       acc[studentId].totalScore += response.score || 0
       acc[studentId].activityCount += 1
       return acc
-    }, {} as Record<string, { name: string; totalScore: number; activityCount: number }>)
+    }, {} as Record<string, StudentPerformance>)
 
-    const topPerformers = Object.values(studentPerformance)
+    const topPerformers = (Object.values(studentPerformance) as StudentPerformance[])
       .map(student => ({
         name: student.name,
         score: Math.round(student.totalScore / student.activityCount),
