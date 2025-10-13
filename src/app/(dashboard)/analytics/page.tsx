@@ -5,55 +5,129 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
-import { TrendingUp, Users, Activity, Award, Download } from 'lucide-react'
+import { TrendingUp, Users, Activity, Award, Download, Loader2 } from 'lucide-react'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
+interface AnalyticsData {
+  totalActivities: number
+  totalResponses: number
+  averageScore: number
+  participationRate: number
+  topPerformers: Array<{
+    name: string
+    score: number
+    activities: number
+  }>
+  activityPerformance: Array<{
+    name: string
+    responses: number
+    avgScore: number
+  }>
+  activityTypes: Array<{
+    name: string
+    value: number
+    color: string
+  }>
+  weeklyParticipation: Array<{
+    name: string
+    participation: number
+  }>
+  trends: {
+    activities: number
+    responses: number
+    score: number
+  }
+}
+
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d')
-  const [analytics, setAnalytics] = useState({
-    totalActivities: 0,
-    totalResponses: 0,
-    averageScore: 0,
-    participationRate: 0,
-    topPerformers: [],
-    activityBreakdown: []
-  })
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for demonstration
-  const activityData = [
-    { name: 'Quiz 1', responses: 45, avgScore: 87 },
-    { name: 'Poll 1', responses: 42, avgScore: 92 },
-    { name: 'Word Cloud', responses: 38, avgScore: 85 },
-    { name: 'Quiz 2', responses: 40, avgScore: 89 },
-    { name: 'Poll 2', responses: 43, avgScore: 91 }
-  ]
+  const fetchAnalytics = async (range: string) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch(`/api/analytics?timeRange=${range}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics data')
+      }
+      
+      const data = await response.json()
+      setAnalytics(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('Analytics fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const participationData = [
-    { name: 'Mon', participation: 85 },
-    { name: 'Tue', participation: 92 },
-    { name: 'Wed', participation: 78 },
-    { name: 'Thu', participation: 88 },
-    { name: 'Fri', participation: 95 },
-    { name: 'Sat', participation: 70 },
-    { name: 'Sun', participation: 65 }
-  ]
+  useEffect(() => {
+    fetchAnalytics(timeRange)
+  }, [timeRange])
 
-  const activityTypes = [
-    { name: 'Quizzes', value: 40, color: '#0088FE' },
-    { name: 'Polls', value: 30, color: '#00C49F' },
-    { name: 'Word Clouds', value: 15, color: '#FFBB28' },
-    { name: 'Short Answer', value: 10, color: '#FF8042' },
-    { name: 'Mini Games', value: 5, color: '#8884D8' }
-  ]
+  const handleTimeRangeChange = (value: string) => {
+    setTimeRange(value)
+  }
 
-  const topPerformers = [
-    { name: 'Alice Chen', score: 95, activities: 12 },
-    { name: 'Bob Wong', score: 92, activities: 11 },
-    { name: 'Carol Lee', score: 89, activities: 10 },
-    { name: 'David Liu', score: 87, activities: 9 },
-    { name: 'Eva Zhang', score: 85, activities: 8 }
-  ]
+  const handleExport = () => {
+    if (!analytics) return
+    
+    const exportData = {
+      timeRange,
+      generatedAt: new Date().toISOString(),
+      ...analytics
+    }
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analytics-${timeRange}-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading analytics data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <Button onClick={() => fetchAnalytics(timeRange)}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!analytics) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">No analytics data available</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -66,7 +140,7 @@ export default function AnalyticsPage() {
               <p className="text-gray-600">Track your teaching performance and student engagement</p>
             </div>
             <div className="flex items-center space-x-4">
-              <Select value={timeRange} onValueChange={setTimeRange}>
+              <Select value={timeRange} onValueChange={handleTimeRangeChange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -76,7 +150,7 @@ export default function AnalyticsPage() {
                   <SelectItem value="90d">Last 90 days</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
@@ -95,9 +169,9 @@ export default function AnalyticsPage() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">24</div>
+              <div className="text-2xl font-bold">{analytics.totalActivities}</div>
               <p className="text-xs text-muted-foreground">
-                +3 from last week
+                {analytics.trends.activities >= 0 ? '+' : ''}{analytics.trends.activities} from last period
               </p>
             </CardContent>
           </Card>
@@ -108,9 +182,9 @@ export default function AnalyticsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,247</div>
+              <div className="text-2xl font-bold">{analytics.totalResponses.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                +12% from last week
+                {analytics.trends.responses >= 0 ? '+' : ''}{analytics.trends.responses} from last period
               </p>
             </CardContent>
           </Card>
@@ -121,9 +195,9 @@ export default function AnalyticsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">87%</div>
+              <div className="text-2xl font-bold">{analytics.averageScore}%</div>
               <p className="text-xs text-muted-foreground">
-                +2% from last week
+                {analytics.trends.score >= 0 ? '+' : ''}{analytics.trends.score}% from last period
               </p>
             </CardContent>
           </Card>
@@ -134,9 +208,9 @@ export default function AnalyticsPage() {
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">89%</div>
+              <div className="text-2xl font-bold">{analytics.participationRate}%</div>
               <p className="text-xs text-muted-foreground">
-                +5% from last week
+                Student engagement rate
               </p>
             </CardContent>
           </Card>
@@ -154,7 +228,7 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={activityData}>
+                <BarChart data={analytics.activityPerformance}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
@@ -177,7 +251,7 @@ export default function AnalyticsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={activityTypes}
+                    data={analytics.activityTypes}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -186,8 +260,8 @@ export default function AnalyticsPage() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {activityTypes.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {analytics.activityTypes.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -207,7 +281,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={participationData}>
+              <LineChart data={analytics.weeklyParticipation}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -228,23 +302,29 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topPerformers.map((student, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-bold">
-                      {index + 1}
+              {analytics.topPerformers.length > 0 ? (
+                analytics.topPerformers.map((student, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-bold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-medium">{student.name}</h4>
+                        <p className="text-sm text-gray-600">{student.activities} activities completed</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium">{student.name}</h4>
-                      <p className="text-sm text-gray-600">{student.activities} activities completed</p>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-green-600">{student.score}%</div>
+                      <div className="text-sm text-gray-600">Average Score</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-green-600">{student.score}%</div>
-                    <div className="text-sm text-gray-600">Average Score</div>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No student performance data available</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
