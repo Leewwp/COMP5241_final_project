@@ -2,15 +2,39 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BookOpen, Users, Activity, BarChart3, Plus, Settings } from 'lucide-react'
+import { BookOpen, Users, Activity, BarChart3, Plus, Settings, TrendingUp, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
+
+interface DashboardData {
+  stats: {
+    totalCourses: number
+    totalStudents: number
+    totalActivities: number
+    averageScore: number
+  }
+  trends: {
+    courses: number
+    students: number
+    activities: number
+    score: number
+  }
+  recentCourses: Array<{
+    id: string
+    title: string
+    code: string
+    studentCount: number
+  }>
+}
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -18,9 +42,32 @@ export default function DashboardPage() {
       router.push('/auth/login')
       return
     }
+    
+    if (session.user.role === 'teacher') {
+      fetchDashboardData()
+    }
   }, [session, status, router])
 
-  if (status === 'loading') {
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch('/api/dashboard')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data')
+      }
+      
+      const data = await response.json()
+      setDashboardData(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -33,6 +80,18 @@ export default function DashboardPage() {
 
   if (!session || !session.user) {
     return null
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">Error loading dashboard</div>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={fetchDashboardData}>Retry</Button>
+        </div>
+      </div>
+    )
   }
 
   const isTeacher = session.user.role === 'teacher'
@@ -76,9 +135,19 @@ export default function DashboardPage() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">
-                +1 from last month
+              <div className="text-2xl font-bold">{dashboardData?.stats.totalCourses || 0}</div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                {dashboardData?.trends.courses !== undefined && dashboardData.trends.courses !== 0 && (
+                  <>
+                    {dashboardData.trends.courses > 0 ? (
+                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                    )}
+                    {Math.abs(dashboardData.trends.courses)} from last month
+                  </>
+                )}
+                {(!dashboardData?.trends.courses || dashboardData.trends.courses === 0) && 'No change from last month'}
               </p>
             </CardContent>
           </Card>
@@ -89,9 +158,19 @@ export default function DashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">45</div>
-              <p className="text-xs text-muted-foreground">
-                +12% from last month
+              <div className="text-2xl font-bold">{dashboardData?.stats.totalStudents || 0}</div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                {dashboardData?.trends.students !== undefined && dashboardData.trends.students !== 0 && (
+                  <>
+                    {dashboardData.trends.students > 0 ? (
+                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                    )}
+                    {Math.abs(dashboardData.trends.students)} from last month
+                  </>
+                )}
+                {(!dashboardData?.trends.students || dashboardData.trends.students === 0) && 'No change from last month'}
               </p>
             </CardContent>
           </Card>
@@ -102,9 +181,19 @@ export default function DashboardPage() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">
-                +3 this week
+              <div className="text-2xl font-bold">{dashboardData?.stats.totalActivities || 0}</div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                {dashboardData?.trends.activities !== undefined && dashboardData.trends.activities !== 0 && (
+                  <>
+                    {dashboardData.trends.activities > 0 ? (
+                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                    )}
+                    {Math.abs(dashboardData.trends.activities)} from last month
+                  </>
+                )}
+                {(!dashboardData?.trends.activities || dashboardData.trends.activities === 0) && 'No change from last month'}
               </p>
             </CardContent>
           </Card>
@@ -115,9 +204,19 @@ export default function DashboardPage() {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">87%</div>
-              <p className="text-xs text-muted-foreground">
-                +5% from last month
+              <div className="text-2xl font-bold">{dashboardData?.stats.averageScore || 0}%</div>
+              <p className="text-xs text-muted-foreground flex items-center">
+                {dashboardData?.trends.score !== undefined && dashboardData.trends.score !== 0 && (
+                  <>
+                    {dashboardData.trends.score > 0 ? (
+                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                    )}
+                    {Math.abs(dashboardData.trends.score)}% from last month
+                  </>
+                )}
+                {(!dashboardData?.trends.score || dashboardData.trends.score === 0) && 'No change from last month'}
               </p>
             </CardContent>
           </Card>
@@ -135,24 +234,26 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">Software Engineering</h4>
-                    <p className="text-sm text-gray-600">COMP 5241</p>
+                {dashboardData?.recentCourses && dashboardData.recentCourses.length > 0 ? (
+                  dashboardData.recentCourses.map((course) => (
+                    <div key={course.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h4 className="font-medium">{course.title}</h4>
+                        <p className="text-sm text-gray-600">{course.code}</p>
+                        <p className="text-xs text-gray-500">{course.studentCount} students</p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/courses/${course.id}`}>
+                          View
+                        </Link>
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    {isTeacher ? 'No courses created yet' : 'No courses enrolled'}
                   </div>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">Database Systems</h4>
-                    <p className="text-sm text-gray-600">COMP 5242</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
