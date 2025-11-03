@@ -33,7 +33,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -42,10 +42,12 @@ export default function DashboardPage() {
       router.push('/auth/login')
       return
     }
-    
-    if (session.user.role === 'teacher') {
-      fetchDashboardData()
+    if (session.user.role !== 'teacher') {
+      router.push('/student')
+      return
     }
+
+    fetchDashboardData()
   }, [session, status, router])
 
   const fetchDashboardData = async () => {
